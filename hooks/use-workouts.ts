@@ -15,6 +15,7 @@ export function useWorkout(routine: Routine) {
   const secsRef = useRef(routine.steps[0].dur);
   const elapsedRef = useRef(0);
   const startTimeRef = useRef<number | null>(null);
+  const finishedRef = useRef(false);
 
   const steps = routine.steps;
 
@@ -28,6 +29,8 @@ export function useWorkout(routine: Routine) {
   const advanceStep = useCallback(async (nextStep: number) => {
     if (nextStep >= steps.length) {
       // Finished
+      if (finishedRef.current) return;
+      finishedRef.current = true;
       clearTimer();
       setPlaying(false);
       setFinished(true);
@@ -61,6 +64,7 @@ export function useWorkout(routine: Routine) {
   }, [steps, routine]);
 
   const tick = useCallback(async () => {
+    if (finishedRef.current) return;
     secsRef.current -= 1;
     elapsedRef.current += 1;
 
@@ -82,7 +86,7 @@ export function useWorkout(routine: Routine) {
   }, [steps, advanceStep]);
 
   const play = useCallback(() => {
-    if (finished) return;
+    if (finishedRef.current || finished) return;
     if (!startTimeRef.current) startTimeRef.current = Date.now();
     setPlaying(true);
     timerRef.current = setInterval(tick, 1000);
@@ -109,6 +113,7 @@ export function useWorkout(routine: Routine) {
     secsRef.current = steps[0].dur;
     elapsedRef.current = 0;
     startTimeRef.current = null;
+    finishedRef.current = false;
   }, [steps]);
 
   // Cleanup on unmount
