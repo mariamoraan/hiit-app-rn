@@ -1,98 +1,225 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import RoutineCard from '@/components/routine-card';
+import { ROUTINES } from '@/core/data';
+import { Session } from '@/core/domain/routine';
+import { getSessions } from '@/core/storage';
+import { COLORS } from '@/core/styles/colors';
+import { FONTS } from '@/core/styles/fonts';
+import { SPACING } from '@/core/styles/spacing';
+import { useFocusEffect } from '@react-navigation/native';
+import { router } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import {
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const [sessions, setSessions] = useState<Session[]>([]);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  useFocusEffect(
+    useCallback(() => {
+      getSessions().then(setSessions);
+    }, [])
+  );
+
+  const totalMinutes = sessions.reduce((acc, s) => acc + Math.round(s.durationSeconds / 60), 0);
+
+  return (
+    <SafeAreaView style={styles.safe}>
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.bg} />
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.appName}>HIIT</Text>
+            <Text style={styles.tagline}>Cardio de arranque</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.historyBtn}
+            onPress={() => router.push('/(tabs)/history-screen')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.historyBtnText}>Historial</Text>
+            {sessions.length > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{sessions.length}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Stats strip */}
+        {sessions.length > 0 && (
+          <View style={styles.statsStrip}>
+            <View style={styles.statItem}>
+              <Text style={styles.statVal}>{sessions.length}</Text>
+              <Text style={styles.statLabel}>sesiones</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statVal}>{totalMinutes}</Text>
+              <Text style={styles.statLabel}>minutos</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statVal}>
+                {sessions[0]
+                  ? ROUTINES.find(r => r.id === sessions[0].routineId)?.name || '—'
+                  : '—'}
+              </Text>
+              <Text style={styles.statLabel}>último</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Section title */}
+        <Text style={styles.sectionTitle}>ELIGE TU ENTRENO</Text>
+
+        {/* Routine cards */}
+        {ROUTINES.map(routine => (
+          <RoutineCard
+            key={routine.id}
+            routine={routine}
+            onPress={() =>
+              router.push({ pathname: '/workout-screen', params: { routineId: routine.id } })
+            }
+          />
+        ))}
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            Empieza por Arranque y sube cuando 7 min se queden cortos.
+          </Text>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  safe: {
+    flex: 1,
+    backgroundColor: COLORS.bg,
+  },
+  scroll: {
+    flex: 1,
+  },
+  content: {
+    paddingBottom: SPACING.xxl,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.lg,
+    paddingBottom: SPACING.lg,
+  },
+  appName: {
+    fontFamily: FONTS.display,
+    fontSize: 52,
+    color: COLORS.accent,
+    letterSpacing: 2,
+    lineHeight: 52,
+  },
+  tagline: {
+    fontFamily: FONTS.body,
+    fontSize: 12,
+    color: COLORS.textMuted,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  historyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  historyBtnText: {
+    fontFamily: FONTS.body,
+    fontSize: 13,
+    color: COLORS.textSub,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  badge: {
+    backgroundColor: COLORS.accent,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    fontFamily: FONTS.bodyMedium,
+    fontSize: 10,
+    color: COLORS.black,
+  },
+  statsStrip: {
+    flexDirection: 'row',
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.lg,
+    padding: SPACING.md,
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'space-around',
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statVal: {
+    fontFamily: FONTS.display,
+    fontSize: 22,
+    color: COLORS.accent,
+    lineHeight: 24,
+  },
+  statLabel: {
+    fontFamily: FONTS.body,
+    fontSize: 10,
+    color: COLORS.textMuted,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: COLORS.border,
+  },
+  sectionTitle: {
+    fontFamily: FONTS.bodyMedium,
+    fontSize: 10,
+    color: COLORS.textMuted,
+    letterSpacing: 3,
+    textTransform: 'uppercase',
+    paddingHorizontal: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  footer: {
+    marginTop: SPACING.lg,
+    paddingHorizontal: SPACING.md,
+  },
+  footerText: {
+    fontFamily: FONTS.bodyLight,
+    fontSize: 12,
+    color: COLORS.textMuted,
+    lineHeight: 18,
+    textAlign: 'center',
   },
 });
